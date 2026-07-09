@@ -591,7 +591,7 @@ export default function Hero() {
               {/* FIX: "CRAFT CODE" now on a single line on all screen sizes.
                   Font sizes reduced on smaller breakpoints so it doesn't overflow. */}
               <h1 className="font-black leading-[0.9]">
-                <span className="block whitespace-nowrap text-[3rem] sm:text-[3.75rem] md:text-[5.5rem] lg:text-[7.5rem] xl:text-[9rem] text-white tracking-[-0.02em] sm:tracking-[0.01em]">
+                <span className="block whitespace-nowrap text-[3rem] sm:text-[3.75rem] md:text-[5.5rem] lg:text-[7.5rem] xl:text-[9rem] text-white tracking-[-0.00em] sm:tracking-[0.01em]">
                   CRAFT CODE
                 </span>
               </h1>
