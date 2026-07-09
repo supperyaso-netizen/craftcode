@@ -35,8 +35,11 @@ interface Technology {
   name: string;
 }
 
-export default function NewProjectPage() {
-  const propProjectId: string | null = null;
+interface NewProjectPageProps {
+  projectId?: string | null;
+}
+
+export default function NewProjectPage({ projectId: propProjectId = null }: NewProjectPageProps = {}) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -69,14 +72,14 @@ export default function NewProjectPage() {
   // Load project when editing
   useEffect(() => {
     const path = window.location.pathname;
-    let id = propProjectId || null;
-    
+    let id: string | null = propProjectId || null;
+
     // Check if we're on an edit page
     if (!id && path.includes('/admin/projects/') && !path.includes('/new')) {
       const pathSegments = path.split('/');
       id = pathSegments[pathSegments.length - 1] || null;
     }
-    
+
     if (id) {
       setIsEditing(true);
       setProjectId(id);
@@ -88,7 +91,7 @@ export default function NewProjectPage() {
     setIsLoadingProject(true);
     try {
       const project = await projectDB.getById(id);
-      
+
       if (!project) {
         console.error('Project not found:', id);
         triggerToast('❌ Project not found', 'error');
@@ -140,17 +143,17 @@ export default function NewProjectPage() {
       img.onload = () => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        
+
         let hqWidth = img.width;
         let hqHeight = img.height;
         const maxHqDimension = 1920;
-        
+
         if (hqWidth > maxHqDimension || hqHeight > maxHqDimension) {
           const ratio = Math.min(maxHqDimension / hqWidth, maxHqDimension / hqHeight);
           hqWidth = Math.round(hqWidth * ratio);
           hqHeight = Math.round(hqHeight * ratio);
         }
-        
+
         canvas.width = hqWidth;
         canvas.height = hqHeight;
         ctx?.drawImage(img, 0, 0, hqWidth, hqHeight);
@@ -159,18 +162,18 @@ export default function NewProjectPage() {
         let thumbWidth = img.width;
         let thumbHeight = img.height;
         const maxThumbDimension = 400;
-        
+
         if (thumbWidth > maxThumbDimension || thumbHeight > maxThumbDimension) {
           const ratio = Math.min(maxThumbDimension / thumbWidth, maxThumbDimension / thumbHeight);
           thumbWidth = Math.round(thumbWidth * ratio);
           thumbHeight = Math.round(thumbHeight * ratio);
         }
-        
+
         canvas.width = thumbWidth;
         canvas.height = thumbHeight;
         ctx?.drawImage(img, 0, 0, thumbWidth, thumbHeight);
         const thumbnail = canvas.toDataURL('image/jpeg', 0.7);
-        
+
         resolve({ highQuality, thumbnail });
       };
       img.onerror = reject;
@@ -210,7 +213,7 @@ export default function NewProjectPage() {
         });
 
         const { highQuality, thumbnail } = await processImage(dataUrl);
-        
+
         newImages.push({
           id: `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           url: highQuality,
@@ -218,7 +221,7 @@ export default function NewProjectPage() {
           file: file,
           order: images.length + newImages.length
         });
-        
+
         processed++;
         const progress = (processed / totalFiles) * 100;
         setUploadProgress(progress);
@@ -368,7 +371,7 @@ export default function NewProjectPage() {
 
     try {
       await projectDB.save(projectData);
-      
+
       triggerToast(
         isEditing ? '✅ Project updated successfully!' : '✅ Project created successfully!',
         'success'
