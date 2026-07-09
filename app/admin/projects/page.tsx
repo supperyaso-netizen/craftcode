@@ -1020,10 +1020,10 @@ export default function AdminProjectsPage() {
       const project = projects.find(p => p.id === id);
       if (!project) return;
 
-      const updated = { 
-        ...project, 
-        status: project.status === 'published' ? 'draft' : 'published' 
-      };
+      const updated: Project = { 
+  ...project, 
+  status: project.status === 'published' ? 'draft' : 'published' 
+};
       
       await projectDB.save(updated);
       setProjects(projects.map(p => p.id === id ? updated : p));
