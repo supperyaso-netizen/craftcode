@@ -813,7 +813,7 @@ export default function WorkPage() {
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
               className="relative z-20 flex items-center justify-center w-full h-full"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
             >
               <img
                 src={fullScreenImage}
