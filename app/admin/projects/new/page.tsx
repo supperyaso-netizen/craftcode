@@ -35,11 +35,8 @@ interface Technology {
   name: string;
 }
 
-interface NewProjectPageProps {
-  projectId?: string;
-}
-
-export default function NewProjectPage({ projectId: propProjectId }: NewProjectPageProps = {}) {
+export default function NewProjectPage() {
+  const propProjectId: string | null = null;
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
