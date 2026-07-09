@@ -1,5 +1,5 @@
 {
-  "name": "craftcode-portfolio",
+  "name": "craftcode",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "postinstall": "prisma generate",
     "seed": "npx tsx prisma/seed.ts",
     "db:generate": "npx prisma generate",
     "db:push": "npx prisma db push"
