@@ -1863,7 +1863,6 @@
 
 
 
-
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -2327,17 +2326,29 @@ export default function BookProjectPage() {
   const quickReplies = ["Website", "Logo design", "App", "Branding", "Project discuss"];
 
   return (
-    // ✅ FIX (mobile scroll): changed from `min-h-screen` (which grows with
-    // content and lets the WHOLE page scroll) to a fixed viewport height
-    // (`h-screen` fallback + `h-dvh` for mobile browsers that account for
-    // the address bar) with `overflow-hidden`. Now the header and the
-    // input bar below simply sit in normal flow at fixed positions, and
-    // ONLY the messages div in the middle (flex:1 + overflow-y:auto)
-    // scrolls — exactly like WhatsApp. Nothing else in the page changed.
-    <div className="flex flex-col h-screen h-dvh overflow-hidden" style={{ background: "#08090D" }}>
+    // ✅ FIX (mobile viewport ratio / "half moving" while scrolling):
+    // The root is now the ONE element that owns the full viewport height
+    // (`h-dvh` — the *dynamic* viewport unit that follows the browser's
+    // address bar on mobile, unlike `100vh` which is fixed to the LARGEST
+    // possible viewport and causes content to get cut off / jump when the
+    // address bar shows or hides). It is also `position: relative`, so
+    // every "background" / "toast" layer inside is now `position:
+    // absolute` (scoped to THIS container) instead of `position: fixed`
+    // (scoped to the whole browser viewport). `fixed` elements are what
+    // caused the "top half / bottom half" desync you saw — on mobile,
+    // fixed-position layers are painted against the browser's outer
+    // viewport, which shifts independently of the page as the address bar
+    // animates in/out, so they visually "swim" apart from the rest of the
+    // UI while scrolling. Now everything moves together as one unit, and
+    // ONLY the messages list (flex:1 + overflow-y:auto below) scrolls —
+    // header and input stay pinned in place, exactly like WhatsApp.
+    <div
+      className="relative flex flex-col h-dvh overflow-hidden"
+      style={{ background: "#08090D", overscrollBehavior: "none", touchAction: "pan-y" }}
+    >
 
-      {/* ── Background ── */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+      {/* ── Background (now `absolute`, scoped to the app shell above, not the browser viewport) ── */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div style={{
           position: "absolute", top: "10%", left: "50%", transform: "translateX(-50%)",
           width: 900, height: 900,
@@ -2356,7 +2367,7 @@ export default function BookProjectPage() {
 
       {/* ── Header ── */}
       <header style={{
-        position: "relative", zIndex: 10,
+        position: "relative", zIndex: 10, flexShrink: 0,
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "12px 20px",
         background: "rgba(8,9,13,0.85)",
@@ -2394,46 +2405,46 @@ export default function BookProjectPage() {
                 }}
               />
             </div>
-           <div
-  style={{
-    display: "flex",
-    flexDirection: "column",
-    gap: 1, // 👈 reduce/increase this
-  }}
->
-  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-    <span style={{ color: "#F1F5F9", fontWeight: 800, fontSize: 14, letterSpacing: "-0.3px" }}>
-      CraftCode
-    </span>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 1,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ color: "#F1F5F9", fontWeight: 800, fontSize: 14, letterSpacing: "-0.3px" }}>
+                  CraftCode
+                </span>
 
-    <span
-      style={{
-        fontSize: 9,
-        fontWeight: 800,
-        letterSpacing: "0.1em",
-        color: "#60A5FA",
-        background: "rgba(96,165,250,0.1)",
-        border: "1px solid rgba(96,165,250,0.2)",
-        padding: "2px 5px",
-        borderRadius: 20,
-        textTransform: "uppercase",
-      }}
-    >
-      AI
-    </span>
-  </div>
+                <span
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 800,
+                    letterSpacing: "0.1em",
+                    color: "#60A5FA",
+                    background: "rgba(96,165,250,0.1)",
+                    border: "1px solid rgba(96,165,250,0.2)",
+                    padding: "2px 5px",
+                    borderRadius: 20,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  AI
+                </span>
+              </div>
 
-  <span
-    style={{
-      fontSize: 11,
-      color: "#10B981",
-      fontWeight: 500,
-      marginTop: -2, // 👈 Online mela varum
-    }}
-  >
-    Online
-  </span>
-</div>
+              <span
+                style={{
+                  fontSize: 11,
+                  color: "#10B981",
+                  fontWeight: 500,
+                  marginTop: -2,
+                }}
+              >
+                Online
+              </span>
+            </div>
           </div>
         </div>
 
@@ -2443,11 +2454,6 @@ export default function BookProjectPage() {
             isn't already open) so people can submit more than once. The
             old "Enquiry Sent" badge no longer lives here — it's now a
             transient toast rendered below the header instead. */}
-        {/* ✅ FIX: "Fast Book" was too wide/tall for mobile (no breathing
-            room next to Home) and had a "glassy" two-tone gradient + tinted
-            border. Simplified to a flat, compact button — same solid-color
-            approach as Home, just a secondary shade — sized to actually fit
-            the header on small screens. */}
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
           {!showManualForm && (
             <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
@@ -2466,12 +2472,14 @@ export default function BookProjectPage() {
         </div>
       </header>
 
-      {/* ✅ NEW: "Enquiry Sent" toast — floats centered near the top of the
-          screen and auto-dismisses after 3 seconds, so it never sits fixed
-          in the header pushing buttons around, and never stays visible
-          indefinitely. */}
+      {/* ✅ FIX: "Enquiry Sent" toast — was `position: fixed` (pinned to the
+          browser's outer viewport, which is exactly what desynced from the
+          rest of the UI on mobile scroll). Now `position: absolute` inside
+          the relatively-positioned app shell, so it scrolls/sits with
+          everything else as one unit and still floats above the messages
+          list, auto-dismissing after 3 seconds. */}
       <div style={{
-        position: "fixed", top: 74, left: 0, right: 0,
+        position: "absolute", top: 74, left: 0, right: 0,
         display: "flex", justifyContent: "center",
         zIndex: 50, pointerEvents: "none",
       }}>
@@ -2499,13 +2507,17 @@ export default function BookProjectPage() {
         </AnimatePresence>
       </div>
 
-      {/* ── Messages ── */}
-      <div style={{
-        position: "relative", zIndex: 10, flex: 1,
-        overflowY: "auto", padding: "20px 16px",
-        maxWidth: 720, margin: "0 auto", width: "100%",
-        display: "flex", flexDirection: "column",
-      }}>
+      {/* ── Messages (the ONLY scrollable region — header above and input
+          below stay pinned, WhatsApp-style) ── */}
+      <div
+        style={{
+          position: "relative", zIndex: 10, flex: 1, minHeight: 0,
+          overflowY: "auto", WebkitOverflowScrolling: "touch",
+          padding: "20px 16px",
+          maxWidth: 720, margin: "0 auto", width: "100%",
+          display: "flex", flexDirection: "column",
+        }}
+      >
         <AnimatePresence initial={false}>
           {messages.map((msg) => {
             const isBot = msg.sender === "bot";
@@ -2702,9 +2714,9 @@ export default function BookProjectPage() {
                       style={{
                         display: "flex", alignItems: "center", gap: 8,
                         width: "100%", padding: "10px 13px", borderRadius: 10,
-                        background: "rgba(255,255,255,0.03)",
-                        border: "1px dashed rgba(255,255,255,0.18)",
-                        color: "#94A3B8", fontSize: 12.5, fontWeight: 500,
+                        background: "rgba(37,99,235,0.06)",
+                        border: "1px dashed rgba(37,99,235,0.35)",
+                        color: "#60A5FA", fontSize: 12.5, fontWeight: 600,
                         cursor: "pointer", fontFamily: "inherit",
                       }}>
                       📎 Reference image add pannunga (optional)
@@ -2747,11 +2759,12 @@ export default function BookProjectPage() {
 
       {/* ── Input ── */}
       <div style={{
-        position: "relative", zIndex: 10,
+        position: "relative", zIndex: 10, flexShrink: 0,
         borderTop: "1px solid rgba(255,255,255,0.05)",
         background: "rgba(8,9,13,0.9)",
         backdropFilter: "blur(24px)",
         padding: "12px 16px 16px",
+        paddingBottom: "max(16px, env(safe-area-inset-bottom))",
       }}>
         {messages.length <= 2 && !showManualForm && (
           <div style={{ maxWidth: 720, margin: "0 auto 10px", display: "flex", flexWrap: "wrap", gap: 7 }}>
@@ -2796,15 +2809,20 @@ export default function BookProjectPage() {
         <form onSubmit={(e) => { e.preventDefault(); handleSend(); }}
           style={{ maxWidth: 720, margin: "0 auto", display: "flex", gap: 8 }}>
 
+          {/* ✅ FIX: the attach/image button was rendering in the same dark
+              slate (#475569) as the background, so on most screens it
+              basically disappeared. Now uses the same brand-blue treatment
+              as the rest of the UI (soft blue fill + blue border + blue
+              icon) so it's clearly visible and reads as "tap to attach". */}
           <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
             type="button"
             onClick={() => fileInputRef.current?.click()}
             style={{
               width: 46, height: 46, borderRadius: 13, flexShrink: 0,
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              background: "rgba(37,99,235,0.1)",
+              border: "1px solid rgba(37,99,235,0.28)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              cursor: "pointer", color: "#475569",
+              cursor: "pointer", color: "#60A5FA",
               transition: "all 0.2s",
             }}>
             <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
