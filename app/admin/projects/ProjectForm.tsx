@@ -696,8 +696,8 @@ export default function ProjectForm({ projectId: propProjectId = null }: Project
                       exit={{ opacity: 0, scale: 0.8 }}
                       transition={{ duration: 0.2 }}
                       draggable
-                      onDragStart={(e) => handleDragStart(e, index)}
-                      onDragOver={(e) => handleDragOverImage(e, index)}
+                      onDragStart={(e: React.DragEvent<HTMLDivElement>) => handleDragStart(e, index)}
+                      onDragOver={(e: React.DragEvent<HTMLDivElement>) => handleDragOverImage(e, index)}
                       onDragEnd={handleDragEnd}
                       className={`relative group bg-white/5 rounded-xl overflow-hidden border-2 ${
                         draggedIndex === index ? 'border-[#2563EB] opacity-50' : 'border-transparent'
