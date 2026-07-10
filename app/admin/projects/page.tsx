@@ -38,30 +38,32 @@ export default function AdminProjectsPage() {
   }, []);
 
   const loadProjects = async () => {
-    setIsLoading(true);
+  setIsLoading(true);
 
-    try {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .order('sort_order', { ascending: true });
+  try {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .order('sort_order', { ascending: true });
 
-      if (error) {
-        console.error('Supabase fetch error:', error);
-        throw error;
-      }
-
-      console.log("PROJECTS from Supabase:", data);
-      setProjects(data || []);
-    } catch (error) {
-      console.error('Error loading projects:', error);
-      setProjects([]);
-      triggerToast('❌ Failed to load projects', 'error');
-    } finally {
-      setIsLoading(false);
+    if (error) {
+      console.error('Supabase fetch error:', error);
+      throw error;
     }
-  };
 
+    console.log("📊 All projects from Supabase:", data);
+    console.log("📊 Published projects:", data?.filter(p => p.status === 'published'));
+    console.log("📊 Draft projects:", data?.filter(p => p.status === 'draft'));
+    
+    setProjects(data || []);
+  } catch (error) {
+    console.error('Error loading projects:', error);
+    setProjects([]);
+    triggerToast('❌ Failed to load projects', 'error');
+  } finally {
+    setIsLoading(false);
+  }
+};
   const deleteProject = async (id: string) => {
     if (!confirm('Are you sure you want to delete this project?')) return;
 
