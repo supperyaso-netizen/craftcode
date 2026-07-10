@@ -1915,8 +1915,18 @@ function extractLeadFromConversation(history: { role: string; content: string }[
   const fullText = userMessages.join(" ");
   const lead: LeadState = {};
 
-  const phoneMatches = [...fullText.matchAll(/\b[6-9]\d{9}\b/g)];
-  if (phoneMatches.length) lead.phone = phoneMatches[phoneMatches.length - 1][0];
+  // ✅ FIX: the old regex (`\b[6-9]\d{9}\b`) only matched a bare, isolated
+  // 10-digit number. In real chat messages people almost always add a
+  // country code and/or spaces/dashes — "+91 98765 43210", "91 9876543210",
+  // "09876543210" — and none of those matched, so the phone was silently
+  // never detected and the lead could never auto-complete. We now first
+  // collapse spaces/dashes that sit *between* digits (without touching the
+  // rest of the sentence), then match an optional +91 / 91 / 0 prefix
+  // followed by the real 10-digit number, using a lookahead so we don't
+  // accidentally grab a 10-digit slice out of a longer number.
+  const phoneNormalized = fullText.replace(/(\d)[\s-]+(?=\d)/g, "$1");
+  const phoneMatches = [...phoneNormalized.matchAll(/(?:\+?91|0)?([6-9]\d{9})(?!\d)/g)];
+  if (phoneMatches.length) lead.phone = phoneMatches[phoneMatches.length - 1][1];
 
   const emailMatches = [...fullText.matchAll(/[\w.-]+@[\w.-]+\.\w{2,}/g)];
   if (emailMatches.length) lead.email = emailMatches[emailMatches.length - 1][0];
@@ -2675,7 +2685,24 @@ export default function BookProjectPage() {
                 <div>
                   <input placeholder="Phone number *" value={manualForm.phone}
                     inputMode="numeric"
-                    onChange={(e) => handleManualChange("phone", e.target.value.replace(/[^\d]/g, "").slice(0, 10))}
+                    onChange={(e) => {
+                      // Strip everything but digits first, THEN drop a
+                      // leading country code / trunk-prefix if present —
+                      // doing slice(0,10) before stripping the prefix was
+                      // the bug: it kept the "91"/"0" and cut off the real
+                      // number instead.
+                      let digits = e.target.value.replace(/[^\d]/g, "");
+                      if (digits.length > 10) {
+                        if (digits.startsWith("91") && digits.length === 12) {
+                          digits = digits.slice(2);
+                        } else if (digits.startsWith("0") && digits.length === 11) {
+                          digits = digits.slice(1);
+                        } else {
+                          digits = digits.slice(-10);
+                        }
+                      }
+                      handleManualChange("phone", digits.slice(0, 10));
+                    }}
                     style={{ ...inputStyle, ...(formErrors.phone ? errorBorder : {}) }} />
                   {formErrors.phone && <span style={errorTextStyle}>{formErrors.phone}</span>}
                 </div>
@@ -2858,7 +2885,17 @@ export default function BookProjectPage() {
               everything), and once it hits a max height it stops growing
               and scrolls internally instead — so long messages stay fully
               reviewable. Enter sends (Shift+Enter makes a new line). */}
+          {/* ✅ FIX: placeholder text ("Enna venum? Type pannunga...") was
+              wrapping to 2 lines on narrow phones, but the box's height was
+              only ever recalculated on typing (onChange) — so with the
+              field still empty, the second line of the placeholder spilled
+              out past the rounded border and looked cut off/broken. Also
+              gave the placeholder its own explicit, higher-contrast color
+              via the .cc-composer::placeholder rule below, since the
+              browser's default placeholder color was too dim to read
+              clearly against the dark background. */}
           <textarea ref={inputRef} value={inputMessage}
+            className="cc-composer"
             rows={1}
             onChange={(e) => {
               setInputMessage(e.target.value);
@@ -2878,18 +2915,26 @@ export default function BookProjectPage() {
                 }
               }
             }}
-            placeholder="Enna venum? Type pannunga..."
+            placeholder="Type pannunga..."
             style={{
               flex: 1, padding: "12px 17px", borderRadius: 13,
               background: "rgba(255,255,255,0.04)",
               border: "1px solid rgba(255,255,255,0.08)",
               color: "#E2E8F0", fontSize: 14, outline: "none", transition: "border 0.2s",
               resize: "none", fontFamily: "inherit", lineHeight: 1.4,
-              maxHeight: 120, overflowY: "hidden",
+              minHeight: 46, maxHeight: 120, overflowY: "hidden",
+              boxSizing: "border-box",
             }}
             onFocus={e => (e.target.style.borderColor = "rgba(37,99,235,0.45)")}
             onBlur={e => (e.target.style.borderColor = "rgba(255,255,255,0.08)")}
           />
+
+          <style jsx>{`
+            .cc-composer::placeholder {
+              color: #8B98AC;
+              opacity: 1;
+            }
+          `}</style>
 
           <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
             type="submit"
