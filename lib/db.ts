@@ -1,91 +1,152 @@
 // lib/db.ts
+import { supabase } from './supabase';
+
+export interface DBProject {
+  id: string;
+  title: string;
+  slug: string;
+  category: string;
+  description: string;
+  longDescription?: string;
+  technologies: string[];
+  tags: string[];
+  githubLink?: string;
+  liveLink?: string;
+  status: 'published' | 'draft';
+  featured?: boolean;
+  icon?: string;
+  thumbnail?: string;
+  images: any[];
+  order?: number;
+  views?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+function toDbRow(project: any) {
+  return {
+    id: project.id,
+    title: project.title,
+    slug: project.slug,
+    category: project.category,
+    description: project.description,
+    long_description: project.longDescription ?? null,
+    technologies: project.technologies ?? [],
+    tags: project.tags ?? [],
+    github_link: project.githubLink ?? null,
+    live_link: project.liveLink ?? null,
+    status: project.status ?? 'draft',
+    featured: project.featured ?? false,
+    icon: project.icon ?? null,
+    thumbnail: project.thumbnail ?? null,
+    images: project.images ?? [],
+    sort_order: project.order ?? 0,
+    views: project.views ?? 0,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function fromDbRow(row: any): DBProject {
+  return {
+    id: row.id,
+    title: row.title,
+    slug: row.slug,
+    category: row.category,
+    description: row.description,
+    longDescription: row.long_description,
+    technologies: row.technologies || [],
+    tags: row.tags || [],
+    githubLink: row.github_link,
+    liveLink: row.live_link,
+    status: row.status,
+    featured: row.featured,
+    icon: row.icon,
+    thumbnail: row.thumbnail,
+    images: row.images || [],
+    order: row.sort_order,
+    views: row.views,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 export class ProjectDB {
-  private dbName = 'ProjectDB';
-  private storeName = 'projects';
-  private db: IDBDatabase | null = null;
+  async getAll(): Promise<DBProject[]> {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .order('sort_order', { ascending: true });
 
-  async init(): Promise<IDBDatabase> {
-    if (this.db) return this.db;
-
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.dbName, 1);
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        this.db = request.result;
-        resolve(this.db);
-      };
-
-      request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains(this.storeName)) {
-          const store = db.createObjectStore(this.storeName, { keyPath: 'id' });
-          store.createIndex('category', 'category', { unique: false });
-          store.createIndex('status', 'status', { unique: false });
-          store.createIndex('createdAt', 'createdAt', { unique: false });
-        }
-      };
-    });
+    if (error) {
+      console.error('projectDB.getAll error:', error);
+      throw new Error(error.message);
+    }
+    return (data || []).map(fromDbRow);
   }
 
-  async getAll(): Promise<any[]> {
-    const db = await this.init();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(this.storeName, 'readonly');
-      const store = transaction.objectStore(this.storeName);
-      const request = store.getAll();
+  async getById(id: string): Promise<DBProject | null> {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
 
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result);
-    });
-  }
-
-  async getById(id: string): Promise<any | null> {
-    const db = await this.init();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(this.storeName, 'readonly');
-      const store = transaction.objectStore(this.storeName);
-      const request = store.get(id);
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result || null);
-    });
+    if (error) {
+      console.error('projectDB.getById error:', error);
+      throw new Error(error.message);
+    }
+    return data ? fromDbRow(data) : null;
   }
 
   async save(project: any): Promise<void> {
-    const db = await this.init();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(this.storeName, 'readwrite');
-      const store = transaction.objectStore(this.storeName);
-      const request = store.put(project);
+    if (!project.id) {
+      throw new Error('project.id is required to save a project');
+    }
 
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
-    });
+    const existing = await this.getById(project.id);
+    const row = toDbRow(project);
+
+    if (existing) {
+      const { error } = await supabase
+        .from('projects')
+        .update(row)
+        .eq('id', project.id);
+
+      if (error) {
+        console.error('projectDB.save (update) error:', error);
+        throw new Error(error.message);
+      }
+      return;
+    }
+
+    const { error } = await supabase
+      .from('projects')
+      .insert({ ...row, created_at: new Date().toISOString() });
+
+    if (error) {
+      console.error('projectDB.save (insert) error:', error);
+      throw new Error(error.message);
+    }
   }
 
   async delete(id: string): Promise<void> {
-    const db = await this.init();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(this.storeName, 'readwrite');
-      const store = transaction.objectStore(this.storeName);
-      const request = store.delete(id);
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
-    });
+    const { error } = await supabase.from('projects').delete().eq('id', id);
+    if (error) {
+      console.error('projectDB.delete error:', error);
+      throw new Error(error.message);
+    }
   }
 
   async clear(): Promise<void> {
-    const db = await this.init();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(this.storeName, 'readwrite');
-      const store = transaction.objectStore(this.storeName);
-      const request = store.clear();
+    const { error } = await supabase
+      .from('projects')
+      .delete()
+      .neq('id', '__never_matches__');
 
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
-    });
+    if (error) {
+      console.error('projectDB.clear error:', error);
+      throw new Error(error.message);
+    }
   }
 }
 
