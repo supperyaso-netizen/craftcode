@@ -38,32 +38,29 @@ export default function AdminProjectsPage() {
   }, []);
 
   const loadProjects = async () => {
-  setIsLoading(true);
+    setIsLoading(true);
 
-  try {
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .order('sort_order', { ascending: true });
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('sort_order', { ascending: true });
 
-    if (error) {
-      console.error('Supabase fetch error:', error);
-      throw error;
+      if (error) {
+        console.error('Supabase fetch error:', error);
+        throw error;
+      }
+
+      setProjects(data || []);
+    } catch (error) {
+      console.error('Error loading projects:', error);
+      setProjects([]);
+      triggerToast('❌ Failed to load projects', 'error');
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    console.log("📊 All projects from Supabase:", data);
-    console.log("📊 Published projects:", data?.filter(p => p.status === 'published'));
-    console.log("📊 Draft projects:", data?.filter(p => p.status === 'draft'));
-    
-    setProjects(data || []);
-  } catch (error) {
-    console.error('Error loading projects:', error);
-    setProjects([]);
-    triggerToast('❌ Failed to load projects', 'error');
-  } finally {
-    setIsLoading(false);
-  }
-};
   const deleteProject = async (id: string) => {
     if (!confirm('Are you sure you want to delete this project?')) return;
 
@@ -229,7 +226,7 @@ export default function AdminProjectsPage() {
                       </span>
                     </div>
 
-                    {/* Description with Show More/Less */}
+                    {/* Description */}
                     <div className="mt-1">
                       <p className={`text-gray-400 text-sm ${!isExpanded ? 'line-clamp-2' : ''}`}>
                         {project.description || project.long_description}

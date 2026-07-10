@@ -1,6 +1,3 @@
-// app/admin/projects/new/page.tsx
-"use client";
-
 import ProjectForm from "../ProjectForm";
 
 export default function NewProjectPage() {

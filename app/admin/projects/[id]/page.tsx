@@ -1,4 +1,3 @@
-// app/admin/projects/[id]/page.tsx
 "use client";
 
 import { useParams } from "next/navigation";
@@ -6,7 +5,7 @@ import ProjectForm from "../ProjectForm";
 
 export default function EditProjectPage() {
   const params = useParams();
-  const id = params?.id as string;
-
+  const id = params.id as string;
+  
   return <ProjectForm projectId={id} />;
 }

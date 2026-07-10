@@ -851,12 +851,10 @@ export default function ProjectForm({ projectId: propProjectId = null }: Project
 
   const categories = ['Graphic Design', 'UI/UX Design', 'Web Development', 'Full Stack', 'App Development', 'Branding', 'Digital Art', 'Illustration'];
 
-  // Load project when editing
   useEffect(() => {
     const path = window.location.pathname;
     let id: string | null = propProjectId || null;
 
-    // Check if we're on an edit page
     if (!id && path.includes('/admin/projects/') && !path.includes('/new')) {
       const pathSegments = path.split('/');
       id = pathSegments[pathSegments.length - 1] || null;
@@ -908,7 +906,6 @@ export default function ProjectForm({ projectId: propProjectId = null }: Project
         })));
       }
 
-      // Handle images from Supabase
       if (project.image_urls && Array.isArray(project.image_urls) && project.image_urls.length > 0) {
         setImages(
           project.image_urls.map((url: string, index: number) => ({
@@ -1020,7 +1017,7 @@ export default function ProjectForm({ projectId: propProjectId = null }: Project
           setImages(prev => [...prev, ...newImages]);
           setIsUploading(false);
           setUploadProgress(0);
-          triggerToast(`✅ ${newImages.length} images uploaded in high quality!`, 'success');
+          triggerToast(`✅ ${newImages.length} images uploaded!`, 'success');
         }
       } catch (error) {
         console.error('Error processing image:', error);
@@ -1136,8 +1133,7 @@ export default function ProjectForm({ projectId: propProjectId = null }: Project
 
     setIsSubmitting(true);
 
-    // Map frontend fields to Supabase schema
-    const imageUrls = images.map((img, index) => img.url);
+    const imageUrls = images.map((img) => img.url);
     const thumbnailUrl = images.length > 0 ? images[0].url : '';
 
     const supabaseData = {
@@ -1161,14 +1157,12 @@ export default function ProjectForm({ projectId: propProjectId = null }: Project
       let error;
 
       if (isEditing && projectId) {
-        // Update existing project
         const { error: updateError } = await supabase
           .from('projects')
           .update(supabaseData)
           .eq('id', projectId);
         error = updateError;
       } else {
-        // Create new project
         const { error: insertError } = await supabase
           .from('projects')
           .insert([{
@@ -1198,7 +1192,6 @@ export default function ProjectForm({ projectId: propProjectId = null }: Project
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      {/* Toast Notification */}
       <AnimatePresence>
         {showToast && (
           <motion.div
@@ -1216,7 +1209,6 @@ export default function ProjectForm({ projectId: propProjectId = null }: Project
         )}
       </AnimatePresence>
 
-      {/* Header */}
       <div className="flex items-center gap-4">
         <button
           onClick={() => router.push('/admin/projects')}
@@ -1238,7 +1230,6 @@ export default function ProjectForm({ projectId: propProjectId = null }: Project
         <div className="p-12 text-center text-gray-400">Loading project...</div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Info */}
           <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/5 p-6 space-y-6">
             <h2 className="text-white font-semibold text-lg flex items-center gap-2">
               <FolderOpen className="w-5 h-5 text-[#2563EB]" />
@@ -1338,7 +1329,6 @@ export default function ProjectForm({ projectId: propProjectId = null }: Project
             </div>
           </div>
 
-          {/* Technologies */}
           <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/5 p-6 space-y-6">
             <h2 className="text-white font-semibold text-lg flex items-center gap-2">
               <Code className="w-5 h-5 text-[#2563EB]" />
@@ -1387,7 +1377,6 @@ export default function ProjectForm({ projectId: propProjectId = null }: Project
             )}
           </div>
 
-          {/* Links & Status */}
           <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/5 p-6 space-y-6">
             <h2 className="text-white font-semibold text-lg flex items-center gap-2">
               <LinkIcon className="w-5 h-5 text-[#2563EB]" />
@@ -1444,7 +1433,6 @@ export default function ProjectForm({ projectId: propProjectId = null }: Project
             </div>
           </div>
 
-          {/* Image Upload */}
           <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/5 p-6 space-y-6">
             <div className="flex items-center justify-between">
               <div>
@@ -1452,7 +1440,7 @@ export default function ProjectForm({ projectId: propProjectId = null }: Project
                   <ImageIcon className="w-5 h-5 text-[#2563EB]" />
                   Images <span className="text-sm text-gray-400 font-normal">({images.length} uploaded)</span>
                 </h2>
-                <p className="text-gray-500 text-xs mt-1">High quality (1080p) displayed on main page</p>
+                <p className="text-gray-500 text-xs mt-1">High quality images displayed on main page</p>
               </div>
               <button
                 type="button"
@@ -1502,7 +1490,7 @@ export default function ProjectForm({ projectId: propProjectId = null }: Project
                 Drag & drop images here or click to upload
               </p>
               <p className="text-gray-500 text-xs mt-1">
-                First image = thumbnail • PNG, JPG, WEBP • Max 10MB each • High quality preserved
+                First image = thumbnail • PNG, JPG, WEBP • Max 10MB each
               </p>
             </div>
 
@@ -1564,7 +1552,6 @@ export default function ProjectForm({ projectId: propProjectId = null }: Project
             )}
           </div>
 
-          {/* Submit Buttons */}
           <div className="flex gap-4">
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -1591,8 +1578,3 @@ export default function ProjectForm({ projectId: propProjectId = null }: Project
     </div>
   );
 }
-
-
-
-
-
