@@ -2026,12 +2026,22 @@ export default function BookProjectPage() {
   const lastImageRef = useRef<{ base64: string; mime: string } | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const conversationHistory = useRef<{ role: string; content: string }[]>([]);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isTyping, showManualForm]);
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), 300); }, []);
+
+  // Collapse the auto-growing composer back to one line once a message is
+  // sent (inputMessage cleared) — the textarea's height is set directly via
+  // the DOM in the onChange handler, so it needs an explicit reset here.
+  useEffect(() => {
+    if (inputMessage === "" && inputRef.current) {
+      inputRef.current.style.height = "auto";
+      inputRef.current.style.overflowY = "hidden";
+    }
+  }, [inputMessage]);
 
   // Prefill the manual form with whatever the AI chat already extracted,
   // so the user doesn't have to retype what they already told the bot.
@@ -2326,25 +2336,30 @@ export default function BookProjectPage() {
   const quickReplies = ["Website", "Logo design", "App", "Branding", "Project discuss"];
 
   return (
-    // ✅ FIX (mobile viewport ratio / "half moving" while scrolling):
-    // The root is now the ONE element that owns the full viewport height
-    // (`h-dvh` — the *dynamic* viewport unit that follows the browser's
-    // address bar on mobile, unlike `100vh` which is fixed to the LARGEST
-    // possible viewport and causes content to get cut off / jump when the
-    // address bar shows or hides). It is also `position: relative`, so
-    // every "background" / "toast" layer inside is now `position:
-    // absolute` (scoped to THIS container) instead of `position: fixed`
-    // (scoped to the whole browser viewport). `fixed` elements are what
-    // caused the "top half / bottom half" desync you saw — on mobile,
-    // fixed-position layers are painted against the browser's outer
-    // viewport, which shifts independently of the page as the address bar
-    // animates in/out, so they visually "swim" apart from the rest of the
-    // UI while scrolling. Now everything moves together as one unit, and
-    // ONLY the messages list (flex:1 + overflow-y:auto below) scrolls —
-    // header and input stay pinned in place, exactly like WhatsApp.
+    // ✅ FIX (header disappearing / whole page scrolling on mobile web):
+    // The root shell is now `position: fixed; inset: 0; height: 100dvh`.
+    // Previously it just sat in normal document flow — if the rendered
+    // content was ever taller than the visible viewport (very common on
+    // mobile web, since the browser's own address bar eats into the
+    // available height), the BROWSER page itself would scroll, dragging
+    // the header up and off-screen along with everything else, since
+    // there is no separate "app frame" holding it in place. Pinning the
+    // shell to the viewport with `fixed` removes it from document flow
+    // entirely, so the browser page can never scroll — only the inner
+    // regions we explicitly made scrollable (the messages list) can move.
+    // `100dvh` still tracks the address bar's dynamic show/hide so the
+    // shell always matches the true visible height on any device. Header
+    // and input stay pinned in place, exactly like WhatsApp/Claude.
     <div
-      className="relative flex flex-col h-dvh overflow-hidden"
-      style={{ background: "#08090D", overscrollBehavior: "none", touchAction: "pan-y" }}
+      className="flex flex-col overflow-hidden"
+      style={{
+        position: "fixed",
+        inset: 0,
+        height: "100dvh",
+        background: "#08090D",
+        overscrollBehavior: "none",
+        touchAction: "pan-y",
+      }}
     >
 
       {/* ── Background (now `absolute`, scoped to the app shell above, not the browser viewport) ── */}
@@ -2834,14 +2849,43 @@ export default function BookProjectPage() {
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect}
             style={{ display: "none" }} />
 
-          <input ref={inputRef} type="text" value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
+          {/* ✅ FIX: was a single-line <input>, so once the typed text got
+              longer than the visible width it just scrolled sideways with
+              the caret — you couldn't see what you'd already typed without
+              scrubbing through it. Now it's an auto-growing <textarea>,
+              same idea as Claude's own composer: it starts at one line,
+              grows downward as you type (wrapping normally so you can read
+              everything), and once it hits a max height it stops growing
+              and scrolls internally instead — so long messages stay fully
+              reviewable. Enter sends (Shift+Enter makes a new line). */}
+          <textarea ref={inputRef} value={inputMessage}
+            rows={1}
+            onChange={(e) => {
+              setInputMessage(e.target.value);
+              const el = e.target;
+              el.style.height = "auto";
+              const maxHeight = 120;
+              el.style.height = Math.min(el.scrollHeight, maxHeight) + "px";
+              el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (inputMessage.trim() || pendingImage) {
+                  handleSend();
+                  const el = inputRef.current;
+                  if (el) { el.style.height = "auto"; el.style.overflowY = "hidden"; }
+                }
+              }
+            }}
             placeholder="Enna venum? Type pannunga..."
             style={{
               flex: 1, padding: "12px 17px", borderRadius: 13,
               background: "rgba(255,255,255,0.04)",
               border: "1px solid rgba(255,255,255,0.08)",
               color: "#E2E8F0", fontSize: 14, outline: "none", transition: "border 0.2s",
+              resize: "none", fontFamily: "inherit", lineHeight: 1.4,
+              maxHeight: 120, overflowY: "hidden",
             }}
             onFocus={e => (e.target.style.borderColor = "rgba(37,99,235,0.45)")}
             onBlur={e => (e.target.style.borderColor = "rgba(255,255,255,0.08)")}
