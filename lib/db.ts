@@ -38,7 +38,7 @@ function toDbRow(project: any) {
     status: project.status ?? 'draft',
     featured: project.featured ?? false,
     icon: project.icon ?? null,
-    thumbnail: project.thumbnail ?? null,
+    thumbnail: project.thumbnail ?? (project.images?.[0]?.imageData ?? project.images?.[0]?.url ?? null),
     images: project.images ?? [],
     sort_order: project.order ?? 0,
     views: project.views ?? 0,
