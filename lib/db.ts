@@ -38,7 +38,7 @@ function toDbRow(project: any) {
     status: project.status ?? 'draft',
     featured: project.featured ?? false,
     icon: project.icon ?? null,
-    thumbnail: project.thumbnail ?? (project.images?.[0]?.imageData ?? project.images?.[0]?.url ?? null),
+    thumbnail: project.thumbnail ?? null,
     images: project.images ?? [],
     sort_order: project.order ?? 0,
     views: project.views ?? 0,
@@ -71,80 +71,96 @@ function fromDbRow(row: any): DBProject {
 }
 
 export class ProjectDB {
-  async getAll(): Promise<DBProject[]> {
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .order('sort_order', { ascending: true });
+ async getAll(): Promise<DBProject[]> {
+  console.log("========== GET ALL START ==========");
+  console.log("Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
 
-    if (error) {
-      console.error('projectDB.getAll error:', error);
-      throw new Error(error.message);
-    }
-    return (data || []).map(fromDbRow);
+  const { data, error } = await supabase
+  .from("projects")
+  .select("*")
+  .order("sort_order", { ascending: true });
+
+  console.log("DATA:", data);
+  console.log("ERROR:", error);
+
+  if (error) {
+    console.error(error);
+    throw new Error(error.message);
   }
+
+  return (data ?? []).map(fromDbRow);
+}
 
   async getById(id: string): Promise<DBProject | null> {
     const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('id', id)
+      .from("projects")
+      .select("*")
+      .eq("id", id)
       .maybeSingle();
 
     if (error) {
-      console.error('projectDB.getById error:', error);
+      console.error("projectDB.getById error:", error);
       throw new Error(error.message);
     }
+
     return data ? fromDbRow(data) : null;
   }
 
-  async save(project: any): Promise<void> {
+  async save(project: DBProject): Promise<void> {
     if (!project.id) {
-      throw new Error('project.id is required to save a project');
+      throw new Error("project.id is required");
     }
 
-    const existing = await this.getById(project.id);
     const row = toDbRow(project);
+    const existing = await this.getById(project.id);
 
     if (existing) {
       const { error } = await supabase
-        .from('projects')
+        .from("projects")
         .update(row)
-        .eq('id', project.id);
+        .eq("id", project.id);
 
       if (error) {
-        console.error('projectDB.save (update) error:', error);
+        console.error("Update Error:", error);
         throw new Error(error.message);
       }
+
       return;
     }
 
     const { error } = await supabase
-      .from('projects')
-      .insert({ ...row, created_at: new Date().toISOString() });
+      .from("projects")
+      .insert({
+        ...row,
+        created_at: new Date().toISOString(),
+      });
 
     if (error) {
-      console.error('projectDB.save (insert) error:', error);
+      console.error("Insert Error:", error);
       throw new Error(error.message);
     }
   }
 
   async delete(id: string): Promise<void> {
-    const { error } = await supabase.from('projects').delete().eq('id', id);
+    const { error } = await supabase
+      .from("projects")
+      .delete()
+      .eq("id", id);
+
     if (error) {
-      console.error('projectDB.delete error:', error);
+      console.error("Delete Error:", error);
       throw new Error(error.message);
     }
   }
 
   async clear(): Promise<void> {
     const { error } = await supabase
-      .from('projects')
+      .from("projects")
       .delete()
-      .neq('id', '__never_matches__');
+      .neq("id", "__never_matches__");
 
     if (error) {
-      console.error('projectDB.clear error:', error);
+      console.error("Clear Error:", error);
       throw new Error(error.message);
     }
   }
