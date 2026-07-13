@@ -741,15 +741,16 @@ function buildFastBookFallbackMessage(): string {
   const bookingPhone =
     process.env.BOOKING_PHONE_DISPLAY || process.env.TELEGRAM_CHAT_ID ? process.env.BOOKING_PHONE_DISPLAY : undefined;
   const phoneLine = bookingPhone
-    ? `📞 Direct-a call/WhatsApp pannunga: ${bookingPhone}`
-    : `📞 Team-oda direct contact number website-la irukku, adhula call/WhatsApp pannunga.`;
+    ? `"Ungaloda project details submit pannunga — team direct-a contact pannuvanga. ${bookingPhone}`
+    : ``;
 
   return [
     "Ah sorry! 😅 Ippo AI system konjam busy-a irukku.",
-    "Paravalla — ungal chat details ah already team-ku fast-a anupitten, avanga soon reach out pannuvanga!",
     "",
-    "Fast-a book pannanumnu irundha:",
-    phoneLine,
+    "Fast-ah project book pannanum na:",
+    "🚀 Fast Book option use pannunga.",
+    
+    
   ].join("\n");
 }
 
