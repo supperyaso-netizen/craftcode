@@ -1784,7 +1784,7 @@ export default function WorkPage() {
         )}
       </div>
 
-      {/* ========== CLEAN FULL SCREEN VIEWER - ONLY ONE IMAGE ========== */}
+      {/* ========== FULL SCREEN IMAGE VIEWER ========== */}
       <AnimatePresence>
         {fullScreenImage && (
           <motion.div
@@ -1810,7 +1810,51 @@ export default function WorkPage() {
               </svg>
             </button>
 
-            {/* Main Image - Clean, No Distractions */}
+            {/* Navigation - Previous (PC only) */}
+            {currentProjectImages.length > 1 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                className="absolute left-4 md:left-8 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-full w-10 h-10 md:w-12 md:h-12 flex items-center justify-center transition-all duration-300 z-30 backdrop-blur-sm hidden md:flex"
+              >
+                <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+            )}
+
+            {/* Navigation - Next (PC only) */}
+            {currentProjectImages.length > 1 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                className="absolute right-4 md:right-8 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-full w-10 h-10 md:w-12 md:h-12 flex items-center justify-center transition-all duration-300 z-30 backdrop-blur-sm hidden md:flex"
+              >
+                <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            )}
+
+            {/* Image Counter - PC */}
+            {currentProjectImages.length > 1 && (
+              <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-white/30 bg-white/5 px-3 py-1 rounded-full text-xs font-light z-30 backdrop-blur-sm hidden md:block">
+                {currentImageIndex + 1} / {currentProjectImages.length}
+              </div>
+            )}
+
+            {/* Swipe Hint - Mobile */}
+            {currentProjectImages.length > 1 && (
+              <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 text-white/20 text-[10px] font-light z-30 md:hidden flex items-center gap-2">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
+                </svg>
+                Swipe to navigate
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+              </div>
+            )}
+
+            {/* Main Image */}
             <motion.div
               key={fullScreenImage}
               initial={{ scale: 0.95, opacity: 0 }}
