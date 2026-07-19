@@ -951,6 +951,7 @@ export default function WorkPage() {
   const [isHoveringBack, setIsHoveringBack] = useState(false);
   const [isHoveringBegin, setIsHoveringBegin] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
 
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
@@ -1208,7 +1209,8 @@ export default function WorkPage() {
 
   return (
     <div className="min-h-screen bg-black overflow-x-hidden">
-      {/* Floating Action Buttons */}
+      {/* Floating Action Buttons - hidden when fullscreen image is open */}
+      {!fullScreenImage && (
       <div
         className="fixed top-4 sm:top-6 right-4 sm:right-6 z-[9999] pointer-events-auto"
         style={{
@@ -1223,7 +1225,7 @@ export default function WorkPage() {
           perspective: "none",
         }}
       >
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pointer-events-auto">
+        <div className="flex flex-wrap gap-2 sm:gap-3 max-w-[90vw] sm:max-w-none pointer-events-auto">
           <motion.button
             initial={{ opacity: 0, x: 30, rotate: -10 }}
             animate={{ opacity: 1, x: 0, rotate: 0 }}
@@ -1301,6 +1303,7 @@ export default function WorkPage() {
           </motion.button>
         </div>
       </div>
+      )}
 
       {/* Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
@@ -1472,6 +1475,7 @@ export default function WorkPage() {
               const images = getProjectImages(project);
               const mainImage = images.length > 0 ? getImageSrc(images[0]) : null;
               const imageCount = images.length;
+              const isExpanded = expandedProjectId === project.id;
 
               return (
                 <motion.div
@@ -1520,58 +1524,77 @@ export default function WorkPage() {
                     <h3 className="text-base font-bold text-white mt-1 group-hover:text-[#2563EB] transition-colors duration-300">
                       {project.title}
                     </h3>
-                    <p className="text-gray-400 text-sm mt-1 font-light">{project.description}</p>
+                    <p className={`text-gray-400 text-sm mt-1 font-light ${!isExpanded ? 'line-clamp-2' : ''}`}>{project.description}</p>
 
-                    {project.long_description && (
-                      <p className="text-gray-500 text-xs mt-2 font-light leading-relaxed">{project.long_description}</p>
-                    )}
+                    {/* Expanded Details */}
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        {project.long_description && (
+                          <p className="text-gray-500 text-xs mt-3 font-light leading-relaxed">{project.long_description}</p>
+                        )}
 
-                    {project.technologies && Array.isArray(project.technologies) && project.technologies.length > 0 && (
-                      <div className="mt-3">
-                        <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Technologies</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {project.technologies.map((tech: string) => (
-                            <span key={tech} className="text-[9px] px-2 py-0.5 rounded-full bg-[#2563EB]/15 text-[#2563EB] border border-[#2563EB]/20">
-                              {tech}
-                            </span>
-                          ))}
+                        {project.technologies && Array.isArray(project.technologies) && project.technologies.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Technologies</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {project.technologies.map((tech: string) => (
+                                <span key={tech} className="text-[9px] px-2 py-0.5 rounded-full bg-[#2563EB]/15 text-[#2563EB] border border-[#2563EB]/20">
+                                  {tech}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {project.tags && Array.isArray(project.tags) && project.tags.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Tags</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {project.tags.map((tag: string) => (
+                                <span key={tag} className="text-[9px] px-2 py-0.5 rounded-full bg-white/5 text-gray-400 border border-white/10">
+                                  #{tag}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="mt-3 flex flex-wrap gap-3 text-[10px] text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <span className={`w-1.5 h-1.5 rounded-full ${project.status === 'published' ? 'bg-green-400' : 'bg-yellow-400'}`} />
+                            {project.status === 'published' ? 'Published' : 'Draft'}
+                          </span>
+                          {project.github_link && (
+                            <a href={project.github_link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[#2563EB] hover:text-[#3B82F6] transition-colors" onClick={(e) => e.stopPropagation()}>
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                              GitHub
+                            </a>
+                          )}
+                          {project.live_link && (
+                            <a href={project.live_link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[#2563EB] hover:text-[#3B82F6] transition-colors" onClick={(e) => e.stopPropagation()}>
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                              Live
+                            </a>
+                          )}
                         </div>
-                      </div>
+                      </motion.div>
                     )}
 
-                    {project.tags && Array.isArray(project.tags) && project.tags.length > 0 && (
-                      <div className="mt-3">
-                        <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Tags</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {project.tags.map((tag: string) => (
-                            <span key={tag} className="text-[9px] px-2 py-0.5 rounded-full bg-white/5 text-gray-400 border border-white/10">
-                              #{tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="mt-3 flex flex-wrap gap-3 text-[10px] text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <span className={`w-1.5 h-1.5 rounded-full ${project.status === 'published' ? 'bg-green-400' : 'bg-yellow-400'}`} />
-                        {project.status === 'published' ? 'Published' : 'Draft'}
-                      </span>
-                      {project.github_link && (
-                        <a href={project.github_link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[#2563EB] hover:text-[#3B82F6] transition-colors" onClick={(e) => e.stopPropagation()}>
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-                          GitHub
-                        </a>
-                      )}
-                      {project.live_link && (
-                        <a href={project.live_link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[#2563EB] hover:text-[#3B82F6] transition-colors" onClick={(e) => e.stopPropagation()}>
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                          Live
-                        </a>
-                      )}
-                    </div>
-
-                    <div className="mt-4 pt-3 border-t border-white/5 flex justify-end">
+                    <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between">
+                      <button
+                        onClick={() => setExpandedProjectId(isExpanded ? null : project.id)}
+                        className="text-xs font-medium text-gray-400 hover:text-white transition-colors duration-300 flex items-center gap-1"
+                      >
+                        {isExpanded ? 'View Less' : 'View More'}
+                        <svg className={`w-3 h-3 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
                       <button
                         onClick={() => {
                           if (images.length > 0) {
@@ -1582,7 +1605,7 @@ export default function WorkPage() {
                         }}
                         className="text-xs font-medium text-[#2563EB] group-hover:text-[#3B82F6] transition-colors duration-300 flex items-center gap-1"
                       >
-                        View {imageCount > 0 ? `(${imageCount} images)` : ""}
+                        View {imageCount > 0 ? `(${imageCount})` : ""}
                         <svg className="w-3 h-3 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                         </svg>
@@ -1635,20 +1658,14 @@ export default function WorkPage() {
               const images = getProjectImages(project);
               const mainImage = images.length > 0 ? getImageSrc(images[0]) : null;
               const imageCount = images.length;
+              const isExpanded = expandedProjectId === project.id;
 
               return (
                 <motion.div
                   key={project.id || index}
                   variants={cardVariants}
                   whileHover="hover"
-                  className="group relative bg-white/5 backdrop-blur-sm rounded-xl overflow-hidden border border-white/5 hover:border-[#2563EB]/30 transition-all duration-500 cursor-pointer"
-                  onClick={() => {
-                    if (images.length > 0) {
-                      openFullScreen(getImageSrc(images[0]) || '', 0, images);
-                    } else if (project.live_link) {
-                      window.open(project.live_link, "_blank");
-                    }
-                  }}
+                  className="group relative bg-white/5 backdrop-blur-sm rounded-xl overflow-hidden border border-white/5 hover:border-[#2563EB]/30 transition-all duration-500"
                 >
                   <div className="absolute top-4 right-4 z-10 text-3xl font-black text-white/5 group-hover:text-[#2563EB]/10 transition-colors duration-500">
                     {String(index + 1).padStart(2, "0")}
@@ -1659,7 +1676,12 @@ export default function WorkPage() {
                       <img
                         src={mainImage}
                         alt={project.title}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
+                        onClick={() => {
+                          if (images.length > 0) {
+                            openFullScreen(getImageSrc(images[0]) || '', 0, images);
+                          }
+                        }}
                       />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center">
@@ -1685,60 +1707,78 @@ export default function WorkPage() {
                     <h3 className="text-base font-bold text-white mt-1 group-hover:text-[#2563EB] transition-colors duration-300">
                       {project.title}
                     </h3>
-                    <p className="text-gray-400 text-sm mt-1 font-light">{project.description}</p>
+                    <p className={`text-gray-400 text-sm mt-1 font-light ${!isExpanded ? 'line-clamp-2' : ''}`}>{project.description}</p>
 
-                    {project.long_description && (
-                      <p className="text-gray-500 text-xs mt-2 font-light leading-relaxed">{project.long_description}</p>
-                    )}
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        {project.long_description && (
+                          <p className="text-gray-500 text-xs mt-3 font-light leading-relaxed">{project.long_description}</p>
+                        )}
 
-                    {project.technologies && Array.isArray(project.technologies) && project.technologies.length > 0 && (
-                      <div className="mt-3">
-                        <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Technologies</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {project.technologies.map((tech: string) => (
-                            <span key={tech} className="text-[9px] px-2 py-0.5 rounded-full bg-[#2563EB]/15 text-[#2563EB] border border-[#2563EB]/20">
-                              {tech}
-                            </span>
-                          ))}
+                        {project.technologies && Array.isArray(project.technologies) && project.technologies.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Technologies</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {project.technologies.map((tech: string) => (
+                                <span key={tech} className="text-[9px] px-2 py-0.5 rounded-full bg-[#2563EB]/15 text-[#2563EB] border border-[#2563EB]/20">
+                                  {tech}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {project.tags && Array.isArray(project.tags) && project.tags.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Tags</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {project.tags.map((tag: string) => (
+                                <span key={tag} className="text-[9px] px-2 py-0.5 rounded-full bg-white/5 text-gray-400 border border-white/10">
+                                  #{tag}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="mt-3 flex flex-wrap gap-3 text-[10px] text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <span className={`w-1.5 h-1.5 rounded-full ${project.status === 'published' ? 'bg-green-400' : 'bg-yellow-400'}`} />
+                            {project.status === 'published' ? 'Published' : 'Draft'}
+                          </span>
+                          {project.github_link && (
+                            <a href={project.github_link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[#2563EB] hover:text-[#3B82F6] transition-colors" onClick={(e) => e.stopPropagation()}>
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                              GitHub
+                            </a>
+                          )}
+                          {project.live_link && (
+                            <a href={project.live_link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[#2563EB] hover:text-[#3B82F6] transition-colors" onClick={(e) => e.stopPropagation()}>
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                              Live
+                            </a>
+                          )}
                         </div>
-                      </div>
+                      </motion.div>
                     )}
 
-                    {project.tags && Array.isArray(project.tags) && project.tags.length > 0 && (
-                      <div className="mt-3">
-                        <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Tags</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {project.tags.map((tag: string) => (
-                            <span key={tag} className="text-[9px] px-2 py-0.5 rounded-full bg-white/5 text-gray-400 border border-white/10">
-                              #{tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="mt-3 flex flex-wrap gap-3 text-[10px] text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <span className={`w-1.5 h-1.5 rounded-full ${project.status === 'published' ? 'bg-green-400' : 'bg-yellow-400'}`} />
-                        {project.status === 'published' ? 'Published' : 'Draft'}
-                      </span>
-                      {project.github_link && (
-                        <a href={project.github_link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[#2563EB] hover:text-[#3B82F6] transition-colors" onClick={(e) => e.stopPropagation()}>
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-                          GitHub
-                        </a>
-                      )}
-                      {project.live_link && (
-                        <a href={project.live_link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[#2563EB] hover:text-[#3B82F6] transition-colors" onClick={(e) => e.stopPropagation()}>
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                          Live
-                        </a>
-                      )}
-                    </div>
-
-                    <div className="mt-4 pt-3 border-t border-white/5 flex justify-end">
+                    <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between">
+                      <button
+                        onClick={() => setExpandedProjectId(isExpanded ? null : project.id)}
+                        className="text-xs font-medium text-gray-400 hover:text-white transition-colors duration-300 flex items-center gap-1"
+                      >
+                        {isExpanded ? 'View Less' : 'View More'}
+                        <svg className={`w-3 h-3 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
                       <span className="text-xs font-medium text-[#2563EB] group-hover:text-[#3B82F6] transition-colors duration-300 flex items-center gap-1">
-                        View {imageCount > 0 ? `(${imageCount} images)` : ""}
+                        View {imageCount > 0 ? `(${imageCount})` : ""}
                         <svg className="w-3 h-3 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                         </svg>
