@@ -1158,6 +1158,24 @@ export default function WorkPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [fullScreenImage, currentImageIndex, currentProjectImages]);
 
+  // Lock body scroll when fullscreen image is open
+  useEffect(() => {
+    if (fullScreenImage) {
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.width = "100%";
+    } else {
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.width = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.width = "";
+    };
+  }, [fullScreenImage]);
+
   const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
     if (ref.current) {
       ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1848,21 +1866,21 @@ export default function WorkPage() {
             {/* Pure black background */}
             <div className="absolute inset-0 bg-black" />
             
-            {/* Close Button - Premium X */}
+            {/* Close Button - Only visible element */}
             <button
               onClick={closeFullScreen}
-              className="absolute top-4 right-4 sm:top-6 sm:right-6 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center transition-all duration-300 z-30 backdrop-blur-sm"
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center transition-all duration-300 z-50 backdrop-blur-sm"
             >
               <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
 
-            {/* Navigation - Previous (PC only) */}
+            {/* Navigation - Previous (both mobile & PC) */}
             {currentProjectImages.length > 1 && (
               <button
                 onClick={(e) => { e.stopPropagation(); prevImage(); }}
-                className="absolute left-4 md:left-8 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-full w-10 h-10 md:w-12 md:h-12 flex items-center justify-center transition-all duration-300 z-30 backdrop-blur-sm hidden md:flex"
+                className="absolute left-3 top-1/2 -translate-y-1/2 md:left-8 text-white/30 hover:text-white bg-black/30 hover:bg-black/50 rounded-full w-10 h-10 md:w-12 md:h-12 flex items-center justify-center transition-all duration-300 z-50 backdrop-blur-sm"
               >
                 <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
@@ -1870,36 +1888,16 @@ export default function WorkPage() {
               </button>
             )}
 
-            {/* Navigation - Next (PC only) */}
+            {/* Navigation - Next (both mobile & PC) */}
             {currentProjectImages.length > 1 && (
               <button
                 onClick={(e) => { e.stopPropagation(); nextImage(); }}
-                className="absolute right-4 md:right-8 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-full w-10 h-10 md:w-12 md:h-12 flex items-center justify-center transition-all duration-300 z-30 backdrop-blur-sm hidden md:flex"
+                className="absolute right-3 top-1/2 -translate-y-1/2 md:right-8 text-white/30 hover:text-white bg-black/30 hover:bg-black/50 rounded-full w-10 h-10 md:w-12 md:h-12 flex items-center justify-center transition-all duration-300 z-50 backdrop-blur-sm"
               >
                 <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
-            )}
-
-            {/* Image Counter - PC */}
-            {currentProjectImages.length > 1 && (
-              <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-white/30 bg-white/5 px-3 py-1 rounded-full text-xs font-light z-30 backdrop-blur-sm hidden md:block">
-                {currentImageIndex + 1} / {currentProjectImages.length}
-              </div>
-            )}
-
-            {/* Swipe Hint - Mobile */}
-            {currentProjectImages.length > 1 && (
-              <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 text-white/20 text-[10px] font-light z-30 md:hidden flex items-center gap-2">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
-                </svg>
-                Swipe to navigate
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-              </div>
             )}
 
             {/* Main Image */}
@@ -1909,7 +1907,7 @@ export default function WorkPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="relative z-20 flex items-center justify-center w-full h-full"
+              className="relative z-10 flex items-center justify-center w-full h-full"
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
               onWheel={handleWheel}
               onTouchStart={handleTouchStartZoom}
@@ -1924,13 +1922,6 @@ export default function WorkPage() {
                 draggable={false}
               />
             </motion.div>
-
-            {/* Zoom Level Indicator */}
-            {zoomLevel !== 1 && (
-              <div className="absolute bottom-6 right-6 text-white/30 bg-white/5 px-3 py-1 rounded-full text-xs font-light z-30 backdrop-blur-sm">
-                {Math.round(zoomLevel * 100)}%
-              </div>
-            )}
           </motion.div>
         )}
       </AnimatePresence>
