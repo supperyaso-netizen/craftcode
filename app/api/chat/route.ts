@@ -1,6 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
 import { projectDB } from "@/lib/db";
 
+// ─── RATE LIMITER ──────────────────────────────────────────────────────────────
+// In-memory store: IP → { count, resetTime }
+// Max 50 requests per user per minute
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_MAX = 50;
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute in ms
+
+function getRateLimitKey(req: NextRequest): string {
+  const forwarded = req.headers.get("x-forwarded-for");
+  const ip = forwarded ? forwarded.split(",")[0].trim() : "127.0.0.1";
+  return ip;
+}
+
+function checkRateLimit(key: string): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const entry = rateLimitStore.get(key);
+
+  if (!entry || now > entry.resetTime) {
+    rateLimitStore.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    return { allowed: true, remaining: RATE_LIMIT_MAX - 1 };
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX) {
+    return { allowed: false, remaining: 0 };
+  }
+
+  entry.count++;
+  return { allowed: true, remaining: RATE_LIMIT_MAX - entry.count };
+}
+
+// Cleanup old entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimitStore.entries()) {
+    if (now > entry.resetTime) {
+      rateLimitStore.delete(key);
+    }
+  }
+}, 5 * 60 * 1000);
+
 const SYSTEM_PROMPT = `You are CraftCode's friendly AI project consultant. Warm, respectful, casual like a trusted friend.
 
 ━━━━━━━━━━━━━━━━━━━━━━
@@ -543,6 +583,60 @@ function buildRawTranscript(messages: { role: string; content: string }[]): stri
 }
 
 /**
+ * Send Telegram alert when OpenRouter API limit/credits are exhausted.
+ */
+async function sendTelegramApiLimitAlert(statusCode: number, errorText: string): Promise<boolean> {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+
+  if (!botToken || !chatId) {
+    console.warn("[Telegram] Missing credentials, skipping API limit alert");
+    return false;
+  }
+
+  const time = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+  const reason = statusCode === 402
+    ? "💳 Payment Required — Credits exhausted"
+    : statusCode === 429
+    ? "🚫 Rate Limited — Too many requests"
+    : `⚠️ Error ${statusCode}`;
+
+  const lines = [
+    "🚨 <b>OPENROUTER API LIMIT ALERT</b>",
+    "━━━━━━━━━━━━━━━━",
+    reason,
+    "",
+    `📝 <b>Error:</b> ${errorText.slice(0, 500)}`,
+    "",
+    "⚡ Action needed: Check OpenRouter dashboard",
+    "━━━━━━━━━━━━━━━━",
+    `🕐 ${time}`,
+  ];
+
+  try {
+    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: lines.join("\n"),
+        parse_mode: "HTML",
+      }),
+    });
+    if (!response.ok) {
+      console.error("[Telegram] API limit alert failed:", await response.text());
+      return false;
+    }
+    console.log("[Telegram] API limit alert sent");
+    return true;
+  } catch (error) {
+    console.error("[Telegram] API limit alert error:", error);
+    return false;
+  }
+}
+
+/**
  * Send Telegram text notification for new lead.
  * ✅ FIX: no longer filters out "Need Consultation" / "Not specified" for
  * service, requirements, or conversationSummary — those are exactly the
@@ -849,6 +943,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "messages array required" }, { status: 400 });
     }
 
+    // ── Rate Limit Check ──
+    const rateLimitKey = getRateLimitKey(req);
+    const { allowed, remaining } = checkRateLimit(rateLimitKey);
+
+    if (!allowed) {
+      console.warn(`[Chat] Rate limit exceeded for IP: ${rateLimitKey}`);
+      return NextResponse.json({
+        text: "Too many requests! Please wait a minute and try again. 😊",
+        leadCompleted: false,
+        rateLimited: true,
+      }, { status: 429 });
+    }
+
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
       // ✅ FIX: even with no API key configured at all, salvage the lead
@@ -913,6 +1020,11 @@ export async function POST(req: NextRequest) {
     if (!orRes.ok) {
       const errText = await orRes.text();
       console.error(`[Chat] OpenRouter error ${orRes.status}:`, errText);
+
+      // ✅ Send Telegram alert when API credits/limit exhausted
+      if (orRes.status === 402 || orRes.status === 429) {
+        await sendTelegramApiLimitAlert(orRes.status, errText);
+      }
 
       // Try fallback model for these specific error codes.
       if (orRes.status === 429 || orRes.status === 502 || orRes.status === 404) {
