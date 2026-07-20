@@ -953,12 +953,6 @@ export default function WorkPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
 
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
-  const [zoomLevel, setZoomLevel] = useState(1);
-  const lastTouchDistance = useRef<number | null>(null);
-  const lastTapTime = useRef<number>(0);
-
   const fsdRef = useRef<HTMLDivElement>(null);
   const gdRef = useRef<HTMLDivElement>(null);
 
@@ -1065,7 +1059,6 @@ export default function WorkPage() {
   const closeFullScreen = () => {
     setFullScreenImage(null);
     setCurrentProjectImages([]);
-    setZoomLevel(1);
   };
 
   const nextImage = () => {
@@ -1073,7 +1066,6 @@ export default function WorkPage() {
       const nextIndex = (currentImageIndex + 1) % currentProjectImages.length;
       setCurrentImageIndex(nextIndex);
       setFullScreenImage(getImageSrc(currentProjectImages[nextIndex]));
-      setZoomLevel(1);
     }
   };
 
@@ -1083,67 +1075,7 @@ export default function WorkPage() {
         (currentImageIndex - 1 + currentProjectImages.length) % currentProjectImages.length;
       setCurrentImageIndex(prevIndex);
       setFullScreenImage(getImageSrc(currentProjectImages[prevIndex]));
-      setZoomLevel(1);
     }
-  };
-
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    if (e.deltaY < 0) {
-      setZoomLevel(prev => Math.min(prev + 0.15, 3));
-    } else {
-      setZoomLevel(prev => Math.max(prev - 0.15, 0.5));
-    }
-  };
-
-  const handleTouchStartZoom = (e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      lastTouchDistance.current = dist;
-    } else if (e.touches.length === 1) {
-      const now = Date.now();
-      if (now - lastTapTime.current < 300) {
-        setZoomLevel(prev => prev > 1 ? 1 : 2);
-      }
-      lastTapTime.current = now;
-    }
-  };
-
-  const handleTouchMoveZoom = (e: React.TouchEvent) => {
-    if (e.touches.length === 2 && lastTouchDistance.current !== null) {
-      e.preventDefault();
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      const scale = dist / lastTouchDistance.current;
-      setZoomLevel(prev => Math.min(Math.max(prev * scale, 0.5), 3));
-      lastTouchDistance.current = dist;
-    }
-  };
-
-  const handleTouchEndZoom = () => {
-    lastTouchDistance.current = null;
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
-    if (distance > 50) nextImage();
-    if (distance < -50) prevImage();
-    setTouchStart(null);
-    setTouchEnd(null);
   };
 
   useEffect(() => {
@@ -1857,11 +1789,8 @@ export default function WorkPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black z-[60] flex items-center justify-center"
+            className="fixed inset-0 bg-black z-[60] flex items-center justify-center touch-none"
             onClick={closeFullScreen}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
           >
             {/* Pure black background */}
             <div className="absolute inset-0 bg-black" />
@@ -1907,18 +1836,13 @@ export default function WorkPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="relative z-10 flex items-center justify-center w-full h-full"
+              className="relative z-10 flex items-center justify-center w-full h-full pointer-events-none"
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              onWheel={handleWheel}
-              onTouchStart={handleTouchStartZoom}
-              onTouchMove={handleTouchMoveZoom}
-              onTouchEnd={handleTouchEndZoom}
             >
               <img
                 src={fullScreenImage}
                 alt="Full screen view"
-                className="max-w-[95vw] max-h-[85vh] md:max-w-[90vw] md:max-h-[90vh] object-contain select-none"
-                style={{ transform: `scale(${zoomLevel})`, transition: 'transform 0.15s ease-out' }}
+                className="w-full h-full object-contain select-none"
                 draggable={false}
               />
             </motion.div>
