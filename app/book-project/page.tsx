@@ -1980,7 +1980,7 @@ export default function BookProjectPage() {
 
   const [messages, setMessages] = useState<Message[]>([{
     id: 1,
-    text: "👋 Vanakkam!\n\n enna venum? Sollunga, help pannuven! 😊",
+    text: "Welcome to CraftCode! How can we help you today? 😊",
     sender: "bot",
     time: getTime(),
   }]);
