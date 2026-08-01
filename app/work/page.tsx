@@ -952,15 +952,15 @@ export default function WorkPage() {
   const [isHoveringBegin, setIsHoveringBegin] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
-
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
-  const lastTouchDistance = useRef<number | null>(null);
-  const lastTapTime = useRef<number>(0);
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
 
   const fsdRef = useRef<HTMLDivElement>(null);
   const gdRef = useRef<HTMLDivElement>(null);
+  const zoomLevelRef = useRef(1);
+  const lastTouchDistance = useRef<number | null>(null);
+  const lastTapTime = useRef<number>(0);
+  const panStart = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
 
   const brandColor = "#2563EB";
 
@@ -1066,6 +1066,8 @@ export default function WorkPage() {
     setFullScreenImage(null);
     setCurrentProjectImages([]);
     setZoomLevel(1);
+    setPanPosition({ x: 0, y: 0 });
+    zoomLevelRef.current = 1;
   };
 
   const nextImage = () => {
@@ -1074,6 +1076,8 @@ export default function WorkPage() {
       setCurrentImageIndex(nextIndex);
       setFullScreenImage(getImageSrc(currentProjectImages[nextIndex]));
       setZoomLevel(1);
+      setPanPosition({ x: 0, y: 0 });
+      zoomLevelRef.current = 1;
     }
   };
 
@@ -1084,16 +1088,20 @@ export default function WorkPage() {
       setCurrentImageIndex(prevIndex);
       setFullScreenImage(getImageSrc(currentProjectImages[prevIndex]));
       setZoomLevel(1);
+      setPanPosition({ x: 0, y: 0 });
+      zoomLevelRef.current = 1;
     }
   };
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    if (e.deltaY < 0) {
-      setZoomLevel(prev => Math.min(prev + 0.15, 3));
-    } else {
-      setZoomLevel(prev => Math.max(prev - 0.15, 0.5));
-    }
+    e.stopPropagation();
+    const delta = e.deltaY > 0 ? -0.15 : 0.15;
+    setZoomLevel(prev => {
+      const next = Math.min(Math.max(prev + delta, 0.5), 4);
+      zoomLevelRef.current = next;
+      return next;
+    });
   };
 
   const handleTouchStartZoom = (e: React.TouchEvent) => {
@@ -1106,9 +1114,24 @@ export default function WorkPage() {
     } else if (e.touches.length === 1) {
       const now = Date.now();
       if (now - lastTapTime.current < 300) {
-        setZoomLevel(prev => prev > 1 ? 1 : 2);
+        setZoomLevel(prev => {
+          const next = prev > 1 ? 1 : 2.5;
+          zoomLevelRef.current = next;
+          if (next === 1) setPanPosition({ x: 0, y: 0 });
+          return next;
+        });
+        lastTapTime.current = 0;
+      } else {
+        lastTapTime.current = now;
+        if (zoomLevelRef.current > 1) {
+          panStart.current = {
+            x: e.touches[0].clientX,
+            y: e.touches[0].clientY,
+            px: panPosition.x,
+            py: panPosition.y,
+          };
+        }
       }
-      lastTapTime.current = now;
     }
   };
 
@@ -1120,30 +1143,51 @@ export default function WorkPage() {
         e.touches[0].clientY - e.touches[1].clientY
       );
       const scale = dist / lastTouchDistance.current;
-      setZoomLevel(prev => Math.min(Math.max(prev * scale, 0.5), 3));
+      setZoomLevel(prev => {
+        const next = Math.min(Math.max(prev * scale, 0.5), 4);
+        zoomLevelRef.current = next;
+        return next;
+      });
       lastTouchDistance.current = dist;
+    } else if (e.touches.length === 1 && panStart.current && zoomLevelRef.current > 1) {
+      const dx = e.touches[0].clientX - panStart.current.x;
+      const dy = e.touches[0].clientY - panStart.current.y;
+      setPanPosition({
+        x: panStart.current.px + dx,
+        y: panStart.current.py + dy,
+      });
     }
   };
 
   const handleTouchEndZoom = () => {
     lastTouchDistance.current = null;
+    panStart.current = null;
   };
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.targetTouches[0].clientX);
+  const handleMouseDownPan = (e: React.MouseEvent) => {
+    if (zoomLevelRef.current > 1) {
+      panStart.current = {
+        x: e.clientX,
+        y: e.clientY,
+        px: panPosition.x,
+        py: panPosition.y,
+      };
+    }
   };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
+  const handleMouseMovePan = (e: React.MouseEvent) => {
+    if (panStart.current && zoomLevelRef.current > 1) {
+      const dx = e.clientX - panStart.current.x;
+      const dy = e.clientY - panStart.current.y;
+      setPanPosition({
+        x: panStart.current.px + dx,
+        y: panStart.current.py + dy,
+      });
+    }
   };
 
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
-    if (distance > 50) nextImage();
-    if (distance < -50) prevImage();
-    setTouchStart(null);
-    setTouchEnd(null);
+  const handleMouseUpPan = () => {
+    panStart.current = null;
   };
 
   useEffect(() => {
@@ -1859,14 +1903,11 @@ export default function WorkPage() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black z-[60] flex items-center justify-center"
             onClick={closeFullScreen}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
           >
             {/* Pure black background */}
             <div className="absolute inset-0 bg-black" />
             
-            {/* Close Button - Only visible element */}
+            {/* Close Button */}
             <button
               onClick={closeFullScreen}
               className="absolute top-4 right-4 sm:top-6 sm:right-6 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center transition-all duration-300 z-50 backdrop-blur-sm"
@@ -1876,7 +1917,14 @@ export default function WorkPage() {
               </svg>
             </button>
 
-            {/* Navigation - Previous (both mobile & PC) */}
+            {/* Zoom indicator */}
+            {zoomLevel > 1 && (
+              <div className="absolute top-4 left-4 sm:top-6 sm:left-6 text-white/50 bg-black/50 backdrop-blur-sm rounded-full px-3 py-1 text-xs font-mono z-50">
+                {Math.round(zoomLevel * 100)}%
+              </div>
+            )}
+
+            {/* Navigation - Previous */}
             {currentProjectImages.length > 1 && (
               <button
                 onClick={(e) => { e.stopPropagation(); prevImage(); }}
@@ -1888,7 +1936,7 @@ export default function WorkPage() {
               </button>
             )}
 
-            {/* Navigation - Next (both mobile & PC) */}
+            {/* Navigation - Next */}
             {currentProjectImages.length > 1 && (
               <button
                 onClick={(e) => { e.stopPropagation(); nextImage(); }}
@@ -1913,12 +1961,20 @@ export default function WorkPage() {
               onTouchStart={handleTouchStartZoom}
               onTouchMove={handleTouchMoveZoom}
               onTouchEnd={handleTouchEndZoom}
+              onMouseDown={handleMouseDownPan}
+              onMouseMove={handleMouseMovePan}
+              onMouseUp={handleMouseUpPan}
+              onMouseLeave={handleMouseUpPan}
+              style={{ cursor: zoomLevel > 1 ? 'grab' : 'default' }}
             >
               <img
                 src={fullScreenImage}
                 alt="Full screen view"
                 className="max-w-[95vw] max-h-[85vh] md:max-w-[90vw] md:max-h-[90vh] object-contain select-none"
-                style={{ transform: `scale(${zoomLevel})`, transition: 'transform 0.15s ease-out' }}
+                style={{
+                  transform: `scale(${zoomLevel}) translate(${panPosition.x / zoomLevel}px, ${panPosition.y / zoomLevel}px)`,
+                  transition: panStart.current ? 'none' : 'transform 0.15s ease-out',
+                }}
                 draggable={false}
               />
             </motion.div>
